@@ -31,25 +31,38 @@
 
             <br>
 
-            <ul class="list-group">
-                {% if diariobordo %}
-                    {% for diario in diariobordo %}
-                        <li class="list-group-item">
-                            <strong>{{ diario.datahora.strftime('%d/%m/%Y %H:%M') }}</strong>: 
-                            {% if diario.sentimento == 'feliz' %}
-                                <i class="fas fa-smile" style="color: green;"></i>
-                            {% elif diario.sentimento == 'neutro' %}
-                                <i class="fas fa-meh" style="color: orange;"></i>
-                            {% else %}
-                                <i class="fas fa-frown" style="color: red;"></i>
-                            {% endif %}
-                            <br> {{ diario.texto }}
+            <div class="container">
+                <ul class="timeline">
+                    {% if diariobordo %}
+                        {% for diario in diariobordo %}
+                            <li class="{% if loop.index % 2 == 0 %}timeline-inverted{% endif %}">
+                                <div class="timeline-badge {% if diario.sentimento == 'feliz' %}success{% elif diario.sentimento == 'neutro' %}warning{% else %}danger{% endif %}">
+                                    <i class="{% if diario.sentimento == 'feliz' %}fas fa-smile{% elif diario.sentimento == 'neutro' %}fas fa-meh{% else %}fas fa-frown{% endif %}"></i>
+                                </div>
+                                <div class="timeline-panel">
+                                    <div class="timeline-heading">
+                                        <h4 class="timeline-title">{{ diario.datahora.strftime('%d/%m/%Y %H:%M') }}</h4>
+                                    </div>
+                                    <div class="timeline-body">
+                                        <p>{{ diario.texto }}</p>
+                                    </div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="timeline-inverted">
+                            <div class="timeline-badge"><i class="fas fa-info-circle"></i></div>
+                            <div class="timeline-panel">
+                                <div class="timeline-heading">
+                                    <h4 class="timeline-title">Nenhuma entrada registrada.</h4>
+                                </div>
+                            </div>
                         </li>
-                    {% endfor %}
-                {% else %}
-                    <li class="list-group-item">Nenhuma entrada registrada.</li>
-                {% endif %}
-            </ul>                       
+                    {% endif %}
+                </ul>
+            </div>
+            
+                               
 
             <br>
 
