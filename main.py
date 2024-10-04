@@ -6,6 +6,8 @@ from sqlalchemy.ext.automap import automap_base
 from functools import wraps
 from datetime import datetime
 from conexao import ConexaoSingleton
+from textblob import TextBlob
+from googletrans import Translator
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -34,6 +36,31 @@ def admin_required(f):
             return redirect(url_for('admin_login'))  # Redireciona para o login do admin
         return f(*args, **kwargs)
     return decorated_function
+
+
+translator = Translator()
+
+def analisar_sentimento(texto):
+    if not texto:
+        return 'neutro'  # Retorna 'vazio' se o texto estiver vazio
+    try:
+        # Traduzir o texto para inglês
+        texto_traduzido = translator.translate(texto, src='pt', dest='en').text
+ 
+        # Analisar sentimento
+        sentimento = TextBlob(texto_traduzido).sentiment
+        polaridade = sentimento.polarity
+
+        # Determinar sentimento em português
+        if polaridade > 0:
+            return 'feliz'
+        elif polaridade < 0:
+            return 'triste'
+        else:
+            return 'neutro'
+    except Exception as e:
+        return 'neutro'  # Retorna 'vazio' em caso de erro
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -161,26 +188,30 @@ def admin_login():
 
     return render_template("admin.html", mensagem="", active_page='admin')
 
-@app.route('/adicionar_diario/<string:ra>', methods=['POST'])  # Adicionando o RA na rota
+@app.route('/adicionar_diario/<string:ra>', methods=['POST'])
 def adicionar_diario(ra):
     session_db = Session()  # Criar uma nova sessão
     try:
+        texto_diario = request.form['texto']
+        sentimento = analisar_sentimento(texto_diario)  # Analisa o sentimento
+
         # Criar um novo diário de bordo
         novo_diario = DiarioBordo(
-            texto=request.form['texto'],
+            texto=texto_diario,
             datahora=datetime.now(),
-            fk_Aluno_id=session_db.query(Aluno).filter(Aluno.ra == ra).one().id  # Obter o id do aluno com base no RA
+            fk_Aluno_id=session_db.query(Aluno).filter(Aluno.ra == ra).one().id,
+            sentimento=sentimento
         )
         session_db.add(novo_diario)
         session_db.commit()
-        # Redirecionar para a página de detalhes do aluno usando o RA
-        return redirect(url_for('detalhe_aluno', ra=ra))  # Usando ra aqui
+        return redirect(url_for('detalhe_aluno', ra=ra))
     except Exception as e:
         session_db.rollback()
-        print(f"Erro ao adicionar diário: {e}")  # Captura de erro
+        print(f"Erro ao adicionar diário: {e}")
         return "Erro ao adicionar diário", 500
     finally:
         session_db.close()
+
 
 @app.route('/aluno/<string:ra>', methods=['GET'])  # O RA é uma string
 def detalhe_aluno(ra):

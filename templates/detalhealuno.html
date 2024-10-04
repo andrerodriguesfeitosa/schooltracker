@@ -35,13 +35,21 @@
                 {% if diariobordo %}
                     {% for diario in diariobordo %}
                         <li class="list-group-item">
-                            <strong>{{ diario.datahora.strftime('%d/%m/%Y %H:%M') }}</strong>: <br> {{ diario.texto }}
+                            <strong>{{ diario.datahora.strftime('%d/%m/%Y %H:%M') }}</strong>: 
+                            {% if diario.sentimento == 'feliz' %}
+                                <i class="fas fa-smile" style="color: green;"></i>
+                            {% elif diario.sentimento == 'neutro' %}
+                                <i class="fas fa-meh" style="color: orange;"></i>
+                            {% else %}
+                                <i class="fas fa-frown" style="color: red;"></i>
+                            {% endif %}
+                            <br> {{ diario.texto }}
                         </li>
                     {% endfor %}
                 {% else %}
                     <li class="list-group-item">Nenhuma entrada registrada.</li>
                 {% endif %}
-            </ul>
+            </ul>                       
 
             <br>
 
