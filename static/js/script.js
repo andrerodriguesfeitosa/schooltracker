@@ -32,5 +32,36 @@ $(document).ready(function() {
             $(this).val(value.slice(0, 8));
         }
     });
-    
+        
 });
+
+function verificaRA(ra) {
+    if (ra.length === 8) {
+        $.ajax({
+            url: '/verificar_ra',
+            type: 'POST',
+            data: { ra: ra },
+            success: function(response) {
+                if (response.valido) {
+                    $('#senha-container').show();
+                    $('#entrar-button').show();
+                    $('#mensagem-ra').hide();
+                } else {
+                    $('#senha-container').hide();
+                    $('#entrar-button').hide();
+                    $('#mensagem-ra').text("Digite um RA válido").show();
+                }
+            },
+            error: function() {
+                $('#senha-container').hide();
+                $('#entrar-button').hide();
+                $('#mensagem-ra').text("Erro ao verificar RA").show();
+            }
+        });
+    } else {
+        $('#senha-container').hide();
+        $('#entrar-button').hide();
+        $('#mensagem-ra').hide();
+    }
+};
+

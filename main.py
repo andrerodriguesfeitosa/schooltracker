@@ -8,10 +8,11 @@ from datetime import datetime
 from conexao import ConexaoSingleton
 from textblob import TextBlob
 from googletrans import Translator
+import hashlib
 
 app = Flask(__name__)
 Bootstrap(app)
-app.secret_key = 'sua_chave_secreta'  # Defina uma chave secreta para usar a sessão
+app.secret_key = 'sua_chave_secreta'
 
 conexao_instance = ConexaoSingleton()
 engine = conexao_instance.get_engine()
@@ -19,39 +20,60 @@ engine = conexao_instance.get_engine()
 metadata = MetaData()
 metadata.reflect(engine)
 
-# Mapeamento automático das tabelas para classes Python
 Base = automap_base(metadata=metadata)
 Base.prepare()
 
 Aluno = Base.classes.aluno
 DiarioBordo = Base.classes.diariobordo
 
-# Criar a sessão do SQLAlchemy
 Session = sessionmaker(bind=engine)
+
+def criptografar_senha(senha):
+    return hashlib.md5(senha.encode()).hexdigest()
+
+def aluno_required(f):
+    @wraps(f)
+    def decorated_function(ra, *args, **kwargs):
+        if 'user_id' not in session or session['user_id'] != ra:
+            return redirect(url_for('index'))
+        return f(ra, *args, **kwargs)
+    return decorated_function
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('admin_login'))  # Redireciona para o login do admin
+        # Verifique se o 'user_id' na sessão é o admin
+        if 'user_id' not in session or session['user_id'] != 'admin':
+            return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 
-
-translator = Translator()
+@app.route("/verificar_ra", methods=["POST"])
+def verificar_ra():
+    ra = request.form['ra']
+    session_db = Session()
+    try:
+        aluno = session_db.query(Aluno).filter(Aluno.ra == ra).one_or_none()
+        if aluno:
+            return {"valido": True}
+        else:
+            return {"valido": False}
+    except Exception as e:
+        session_db.rollback()
+        return {"valido": False}, 500
+    finally:
+        session_db.close()
 
 def analisar_sentimento(texto):
+    translator = Translator()
     if not texto:
-        return 'neutro'  # Retorna 'vazio' se o texto estiver vazio
+        return 'neutro'
     try:
-        # Traduzir o texto para inglês
         texto_traduzido = translator.translate(texto, src='pt', dest='en').text
  
-        # Analisar sentimento
         sentimento = TextBlob(texto_traduzido).sentiment
         polaridade = sentimento.polarity
 
-        # Determinar sentimento em português
         if polaridade > 0:
             return 'feliz'
         elif polaridade < 0:
@@ -59,20 +81,27 @@ def analisar_sentimento(texto):
         else:
             return 'neutro'
     except Exception as e:
-        return 'neutro'  # Retorna 'vazio' em caso de erro
+        return 'neutro'
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         ra = request.form['ra']
-        session_db = Session()  # Criar uma nova sessão para esta operação
+        senha = request.form['senha']
+        session_db = Session()
+        
+        # Criptografar a senha digitada pelo usuário
+        senha_criptografada = criptografar_senha(senha)
+
         try:
-            aluno = session_db.query(Aluno).filter(Aluno.ra == ra).one_or_none()
+            aluno = session_db.query(Aluno).filter(Aluno.ra == ra, Aluno.senha == senha_criptografada).one_or_none()
             if aluno:
+                ra_str = aluno.ra
+                session['user_id'] = str(ra_str)  # Armazena o RA na sessão
                 return redirect(url_for('detalhe_aluno', ra=aluno.ra))
             else:
-                mensagem = "RA não encontrado!"
+                mensagem = "RA ou senha inválidos!"
                 return render_template("home.html", mensagem=mensagem, active_page='index')
         except Exception as e:
             session_db.rollback()
@@ -81,6 +110,7 @@ def index():
             session_db.close()
     
     return render_template("home.html", mensagem="", active_page='index')
+
 
 @app.route("/cadastro")
 def cadastro():
@@ -92,13 +122,17 @@ def quem_somos():
 
 @app.route('/novoaluno', methods=['POST'])
 def inserir_aluno():
-    session_db = Session()  # Criar uma nova sessão
+    session_db = Session()
     ra = request.form['ra']
     nome = request.form['nome']
     tempoestudo = request.form['tempoestudo']
     rendafamiliar = request.form['rendafamiliar']
+    senha = request.form['senha']  # Supondo que você tenha um campo para senha no formulário
 
-    aluno = Aluno(ra=ra, nome=nome, tempoestudo=tempoestudo, rendafamiliar=rendafamiliar)
+    # Criptografar a senha
+    senha_criptografada = criptografar_senha(senha)
+
+    aluno = Aluno(ra=ra, nome=nome, tempoestudo=tempoestudo, rendafamiliar=rendafamiliar, senha=senha_criptografada)
 
     try:
         session_db.add(aluno)
@@ -113,7 +147,7 @@ def inserir_aluno():
 @app.route('/alunos', methods=['GET'])
 @admin_required
 def listar_alunos():
-    session_db = Session()  # Criar uma nova sessão
+    session_db = Session()
     page = request.args.get('page', 1, type=int)
     per_page = 10
     search_query = request.args.get('search', '')
@@ -138,7 +172,7 @@ def listar_alunos():
 @app.route('/excluir_aluno/<int:ra>', methods=['POST'])
 @admin_required
 def excluir_aluno(ra):
-    session_db = Session()  # Criar uma nova sessão
+    session_db = Session()
     aluno = session_db.query(Aluno).filter_by(ra=ra).first()
     if aluno:
         try:
@@ -153,7 +187,7 @@ def excluir_aluno(ra):
 @app.route('/atualizar_aluno/<int:ra>', methods=['GET', 'POST'])
 @admin_required
 def atualizar_aluno(ra):
-    session_db = Session()  # Criar uma nova sessão
+    session_db = Session() 
     aluno = session_db.query(Aluno).filter_by(ra=ra).first()
     if request.method == 'POST':
         aluno.nome = request.form['nome']
@@ -180,7 +214,7 @@ def admin_login():
         password = request.form.get('password')
 
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['user_id'] = username  # Armazena o nome do usuário na sessão
+            session['user_id'] = username 
             return redirect(url_for('listar_alunos'))
         else:
             mensagem = "Credenciais inválidas!"
@@ -189,13 +223,13 @@ def admin_login():
     return render_template("admin.html", mensagem="", active_page='admin')
 
 @app.route('/adicionar_diario/<string:ra>', methods=['POST'])
+@aluno_required
 def adicionar_diario(ra):
-    session_db = Session()  # Criar uma nova sessão
+    session_db = Session()
     try:
         texto_diario = request.form['texto']
-        sentimento = analisar_sentimento(texto_diario)  # Analisa o sentimento
+        sentimento = analisar_sentimento(texto_diario) 
 
-        # Criar um novo diário de bordo
         novo_diario = DiarioBordo(
             texto=texto_diario,
             datahora=datetime.now(),
@@ -213,29 +247,29 @@ def adicionar_diario(ra):
         session_db.close()
 
 
-@app.route('/aluno/<string:ra>', methods=['GET'])  # O RA é uma string
+@app.route('/aluno/<string:ra>', methods=['GET'])
+@aluno_required
 def detalhe_aluno(ra):
-    session_db = Session()  # Criar uma nova sessão
+    session_db = Session() 
     try:
-        # Filtrar pelo RA
         aluno = session_db.query(Aluno).filter(Aluno.ra == ra).one_or_none()
-        # Consulta para diários com base no id do aluno
-        diariobordo = session_db.query(DiarioBordo).filter(DiarioBordo.fk_Aluno_id == aluno.id).all() if aluno else []  # Verifica se aluno existe
+        diariobordo = session_db.query(DiarioBordo).filter(DiarioBordo.fk_Aluno_id == aluno.id).all() if aluno else [] 
         if aluno is None:
             return "Aluno não encontrado", 404
     except Exception as e:
         session_db.rollback()
-        print(f"Erro ao buscar o aluno: {e}")  # Captura de erro
+        print(f"Erro ao buscar o aluno: {e}")
         return "Erro ao buscar o aluno", 500
     finally:
         session_db.close()
 
-    return render_template('detalhealuno.html', aluno=aluno, diariobordo=diariobordo, active_page='listar_alunos')  # Passando os diários para o template
+    return render_template('detalhealuno.html', aluno=aluno, diariobordo=diariobordo, active_page='listar_alunos')
+
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)  # Remove o usuário da sessão
-    return redirect(url_for('admin_login'))  # Redireciona para a página de login do admin
+    session.pop('user_id', None)
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -11,14 +11,18 @@
             {% if mensagem %}
                 <h6 class="text-danger text-center">{{ mensagem }}</h6>
             {% endif %}
+
             <form method="POST" action="">
-                <div class="mb-3 d-flex justify-content-center align-items-center input-home">  <!-- Centraliza a linha -->
-                    <input type="text" class="form-control me-2" id="ra" name="ra" required style="width: 50%;"> <!-- Ajuste de largura -->
-                    <button type="submit" class="btn btn-primary">Entrar</button> <!-- Botão na mesma linha -->
+                <div class="mb-3 d-flex justify-content-center align-items-center input-home">
+                    <input type="text" class="form-control me-2" id="ra" name="ra" required style="width: 40%; margin-right: 5px;" oninput="verificaRA(this.value)" autofocus>
+                    <br>
+                    <input type="password" class="form-control me-2" id="senha-container" name="senha" required placeholder="Digite sua senha" style="width: 40%; display: none;">  
+                    <button type="submit" class="btn btn-primary" id="entrar-button" style="display: none;">Entrar</button>
                 </div>
             </form>
             <div class="text-center">
-                <small>Ainda não é cadastrado? <a href="{{ url_for('cadastro') }}">Cadastre-se.</a></small> <!-- Texto menor -->
+                <div id="mensagem-ra" class="text-danger text-center" style="display: none;"></div>
+                <small>Ainda não é cadastrado? <a href="{{ url_for('cadastro') }}">Cadastre-se.</a></small>
             </div>
         </div>
     </div>
