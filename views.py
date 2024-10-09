@@ -1,18 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+from services import criptografar_senha,aluno_required,admin_required,analisar_sentimento
 from flask_bootstrap import Bootstrap
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import MetaData
 from sqlalchemy.ext.automap import automap_base
-from functools import wraps
-from datetime import datetime
 from conexao import ConexaoSingleton
-from textblob import TextBlob
-from googletrans import Translator
-import hashlib
 
 app = Flask(__name__)
 Bootstrap(app)
-app.secret_key = 'sua_chave_secreta'
+app.secret_key = '#&aARfvJKg!sgv'
 
 conexao_instance = ConexaoSingleton()
 engine = conexao_instance.get_engine()
@@ -27,26 +25,6 @@ Aluno = Base.classes.aluno
 DiarioBordo = Base.classes.diariobordo
 
 Session = sessionmaker(bind=engine)
-
-def criptografar_senha(senha):
-    return hashlib.md5(senha.encode()).hexdigest()
-
-def aluno_required(f):
-    @wraps(f)
-    def decorated_function(ra, *args, **kwargs):
-        if 'user_id' not in session or session['user_id'] != ra:
-            return redirect(url_for('index'))
-        return f(ra, *args, **kwargs)
-    return decorated_function
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Verifique se o 'user_id' na sessão é o admin
-        if 'user_id' not in session or session['user_id'] != 'admin':
-            return redirect(url_for('admin_login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 @app.route("/verificar_ra", methods=["POST"])
 def verificar_ra():
@@ -64,26 +42,6 @@ def verificar_ra():
     finally:
         session_db.close()
 
-def analisar_sentimento(texto):
-    translator = Translator()
-    if not texto:
-        return 'neutro'
-    try:
-        texto_traduzido = translator.translate(texto, src='pt', dest='en').text
- 
-        sentimento = TextBlob(texto_traduzido).sentiment
-        polaridade = sentimento.polarity
-
-        if polaridade > 0:
-            return 'feliz'
-        elif polaridade < 0:
-            return 'triste'
-        else:
-            return 'neutro'
-    except Exception as e:
-        return 'neutro'
-
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -91,14 +49,13 @@ def index():
         senha = request.form['senha']
         session_db = Session()
         
-        # Criptografar a senha digitada pelo usuário
         senha_criptografada = criptografar_senha(senha)
 
         try:
             aluno = session_db.query(Aluno).filter(Aluno.ra == ra, Aluno.senha == senha_criptografada).one_or_none()
             if aluno:
                 ra_str = aluno.ra
-                session['user_id'] = str(ra_str)  # Armazena o RA na sessão
+                session['user_id'] = str(ra_str)
                 return redirect(url_for('detalhe_aluno', ra=aluno.ra))
             else:
                 mensagem = "RA ou senha inválidos!"
@@ -110,7 +67,6 @@ def index():
             session_db.close()
     
     return render_template("home.html", mensagem="", active_page='index')
-
 
 @app.route("/cadastro")
 def cadastro():
@@ -127,9 +83,8 @@ def inserir_aluno():
     nome = request.form['nome']
     tempoestudo = request.form['tempoestudo']
     rendafamiliar = request.form['rendafamiliar']
-    senha = request.form['senha']  # Supondo que você tenha um campo para senha no formulário
+    senha = request.form['senha'] 
 
-    # Criptografar a senha
     senha_criptografada = criptografar_senha(senha)
 
     aluno = Aluno(ra=ra, nome=nome, tempoestudo=tempoestudo, rendafamiliar=rendafamiliar, senha=senha_criptografada)
@@ -246,14 +201,13 @@ def adicionar_diario(ra):
     finally:
         session_db.close()
 
-
 @app.route('/aluno/<string:ra>', methods=['GET'])
 @aluno_required
 def detalhe_aluno(ra):
     session_db = Session() 
     try:
         aluno = session_db.query(Aluno).filter(Aluno.ra == ra).one_or_none()
-        diariobordo = session_db.query(DiarioBordo).filter(DiarioBordo.fk_Aluno_id == aluno.id).all() if aluno else [] 
+        diariobordo = session_db.query(DiarioBordo).filter(DiarioBordo.fk_Aluno_id == aluno.id).order_by(DiarioBordo.id.desc()).all() if aluno else [] 
         if aluno is None:
             return "Aluno não encontrado", 404
     except Exception as e:
@@ -264,7 +218,6 @@ def detalhe_aluno(ra):
         session_db.close()
 
     return render_template('detalhealuno.html', aluno=aluno, diariobordo=diariobordo, active_page='listar_alunos')
-
 
 @app.route('/logout')
 def logout():

@@ -65,3 +65,63 @@ function verificaRA(ra) {
     }
 };
 
+
+//Scripts SENIA
+
+const statusText = document.getElementById('status-text');
+const statusIcon = document.getElementById('status-icon');
+const microphoneStatus = document.getElementById('microphone-status');
+
+function getFemaleVoice() {
+    return new Promise((resolve) => {
+        window.speechSynthesis.onvoiceschanged = function() {
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(voice => voice.name.includes('Microsoft Maria'));
+            resolve(femaleVoice || voices[0]); 
+        };
+    });
+}
+
+document.getElementById('activate-senia').addEventListener('click', async function() {
+    const nome = '{{ aluno.nome }}';
+    const femaleVoice = await getFemaleVoice();
+    const msg = new SpeechSynthesisUtterance(`Olá ${nome}, sou a SENIA, sua assistente virtual e gostaria de saber como foi sua aula hoje.`);
+    msg.voice = femaleVoice;
+
+    window.speechSynthesis.speak(msg);
+
+    msg.onend = function() {
+        startRecognition();
+    };
+});
+
+function startRecognition() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'pt-BR';
+
+    recognition.onstart = function() {
+        microphoneStatus.style.display = 'block';
+        statusText.textContent = 'Microfone ativado, escutando...';
+        statusIcon.className = 'fas fa-microphone';
+    };
+
+    recognition.onresult = function(event) {
+        const texto = event.results[0][0].transcript;
+        document.getElementById('texto').value = texto;
+    };
+
+    recognition.onerror = function(event) {
+        statusText.textContent = 'Erro no reconhecimento de voz: ' + event.error;
+        statusIcon.className = 'fas fa-exclamation-triangle';
+    };
+
+    recognition.onend = function() {
+        setTimeout(() => {
+            statusText.textContent = 'Microfone desativado.';
+            statusIcon.className = 'fas fa-microphone-slash'; 
+            microphoneStatus.style.display = 'none'; 
+        }, 2000); 
+    };
+
+    recognition.start();
+}

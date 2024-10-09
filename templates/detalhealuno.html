@@ -28,16 +28,14 @@
                 <span id="status-text"></span>
                 <i id="status-icon" class="fas"></i>
             </div>
-
             <br>
-
             <div class="container">
                 <ul class="timeline">
                     {% if diariobordo %}
                         {% for diario in diariobordo %}
                             <li class="{% if loop.index % 2 == 0 %}timeline-inverted{% endif %}">
                                 <div class="timeline-badge {% if diario.sentimento == 'feliz' %}success{% elif diario.sentimento == 'neutro' %}warning{% else %}danger{% endif %}">
-                                    <i class="{% if diario.sentimento == 'feliz' %}fas fa-smile{% elif diario.sentimento == 'neutro' %}fas fa-meh{% else %}fas fa-frown{% endif %}"></i>
+                                    <i class="{% if diario.sentimento == 'feliz' %}fas fa-smile{% elif diario.sentimento == 'neutro' %}fas fa-user{% else %}fas fa-frown{% endif %}"></i>
                                 </div>
                                 <div class="timeline-panel">
                                     <div class="timeline-heading">
@@ -60,12 +58,8 @@
                         </li>
                     {% endif %}
                 </ul>
-            </div>
-            
-                               
-
+            </div>                       
             <br>
-
             <div class="text-center">
                 <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
             </div>
@@ -73,65 +67,4 @@
     </div>
 </div>
 
-<script>
-    const statusText = document.getElementById('status-text');
-    const statusIcon = document.getElementById('status-icon');
-    const microphoneStatus = document.getElementById('microphone-status');
-
-    // Função para listar voz feminina
-    function getFemaleVoice() {
-        return new Promise((resolve) => {
-            window.speechSynthesis.onvoiceschanged = function() {
-                const voices = window.speechSynthesis.getVoices();
-                const femaleVoice = voices.find(voice => voice.name.includes('Microsoft Maria'));
-                resolve(femaleVoice || voices[0]); 
-            };
-        });
-    }
-
-    document.getElementById('activate-senia').addEventListener('click', async function() {
-        const nome = '{{ aluno.nome }}';
-        const femaleVoice = await getFemaleVoice();
-        const msg = new SpeechSynthesisUtterance(`Olá ${nome}, sou a SENIA, sua assistente virtual e gostaria de saber como foi sua aula hoje.`);
-        msg.voice = femaleVoice; // Define a voz feminina
-
-        window.speechSynthesis.speak(msg);
-
-        // Espera até que a fala termine antes de iniciar o reconhecimento
-        msg.onend = function() {
-            startRecognition();
-        };
-    });
-
-    function startRecognition() {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'pt-BR';
-
-        recognition.onstart = function() {
-            microphoneStatus.style.display = 'block';
-            statusText.textContent = 'Microfone ativado, escutando...';
-            statusIcon.className = 'fas fa-microphone'; // Ícone de microfone ativo
-        };
-
-        recognition.onresult = function(event) {
-            const texto = event.results[0][0].transcript;
-            document.getElementById('texto').value = texto; // Adiciona texto ao textarea
-        };
-
-        recognition.onerror = function(event) {
-            statusText.textContent = 'Erro no reconhecimento de voz: ' + event.error;
-            statusIcon.className = 'fas fa-exclamation-triangle'; // Ícone de erro
-        };
-
-        recognition.onend = function() {
-            setTimeout(() => {
-                statusText.textContent = 'Microfone desativado.';
-                statusIcon.className = 'fas fa-microphone-slash'; // Ícone de microfone desativado
-                microphoneStatus.style.display = 'none'; // Oculta o status do microfone
-            }, 2000); // Atraso de 2000 milissegundos (2 segundos)
-        };
-
-        recognition.start();
-    }
-</script>
 {% endblock %}
