@@ -30,10 +30,10 @@
             </div>
             <br>
             <div class="container">
-                <ul class="timeline">
+                <ul class="timeline" id="timeline">
                     {% if diariobordo %}
-                        {% for diario in diariobordo %}
-                            <li class="{% if loop.index % 2 == 0 %}timeline-inverted{% endif %}">
+                        {% for diario in diariobordo[:5] %}
+                            <li class="{% if loop.index % 2 == 1 %}timeline-inverted{% endif %}">
                                 <div class="timeline-badge {% if diario.sentimento == 'feliz' %}success{% elif diario.sentimento == 'neutro' %}warning{% else %}danger{% endif %}">
                                     <i class="{% if diario.sentimento == 'feliz' %}fas fa-smile{% elif diario.sentimento == 'neutro' %}fas fa-user{% else %}fas fa-frown{% endif %}"></i>
                                 </div>
@@ -58,7 +58,14 @@
                         </li>
                     {% endif %}
                 </ul>
-            </div>                       
+            
+                {% if diariobordo|length > 5 %}
+                    <div class="text-center">
+                        <button id="loadMore" onclick="loadMore()" class="btn btn-primary">Mostrar mais</button>
+                    </div>
+                {% endif %}
+            </div>
+            
             <br>
             <div class="text-center">
                 <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
@@ -66,5 +73,51 @@
         </div>
     </div>
 </div>
+
+<script>
+    let currentIndex = 5; // Começa a partir do sexto item
+    const diariobordo = {{ diariobordo|tojson }}; // Converte a lista para JSON
+
+    function loadMore() {
+        const timeline = document.getElementById('timeline');
+        let itemsToAdd = 0; // Contador de itens a serem adicionados
+
+        for (let i = currentIndex; i < currentIndex + 5 && i < diariobordo.length; i++) {
+            const diario = diariobordo[i];
+            const li = document.createElement('li');
+
+            // Alternar a classe com base no índice total já exibido
+            li.className = ((timeline.children.length) % 2 === 0) ? 'timeline-inverted' : '';
+
+            li.innerHTML = `
+                <div class="timeline-badge ${diario.sentimento === 'feliz' ? 'success' : diario.sentimento === 'neutro' ? 'warning' : 'danger'}">
+                    <i class="${diario.sentimento === 'feliz' ? 'fas fa-smile' : diario.sentimento === 'neutro' ? 'fas fa-user' : 'fas fa-frown'}"></i>
+                </div>
+                <div class="timeline-panel">
+                    <div class="timeline-heading">
+                        <h4 class="timeline-title">${new Date(diario.datahora).toLocaleString('pt-BR')}</h4>
+                    </div>
+                    <div class="timeline-body">
+                        <p>${diario.texto}</p>
+                    </div>
+                </div>
+            `;
+            timeline.appendChild(li);
+            itemsToAdd++; // Incrementa o contador de itens adicionados
+        }
+        
+        currentIndex += 5; // Atualiza o índice para o próximo grupo de 5
+
+        // Esconder o botão se não houver mais itens
+        if (currentIndex >= diariobordo.length) {
+            document.getElementById('loadMore').style.display = 'none'; // Esconde o botão
+        }
+
+        // Se não houve itens a serem adicionados, esconder o botão
+        if (itemsToAdd === 0) {
+            document.getElementById('loadMore').style.display = 'none'; // Esconde o botão se não há mais itens
+        }
+    }
+</script>
 
 {% endblock %}

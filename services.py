@@ -18,31 +18,19 @@ def aluno_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Verifique se o 'user_id' na sessão é o admin
         if 'user_id' not in session or session['user_id'] != 'admin':
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
-
-def corrigir_texto(texto):
-    # Corrige o texto usando TextBlob
-    blob = TextBlob(texto)
-    return str(blob.correct())
 
 def analisar_sentimento(texto):
     translator = Translator()
 
     if not texto:
         return 'neutro'
-    
-    # Corrigir o texto antes de traduzir
-    texto_corrigido = corrigir_texto(texto)
-    
     try:
-        # Traduzir o texto corrigido
-        texto_traduzido = translator.translate(texto_corrigido, src='pt', dest='en').text
+        texto_traduzido = translator.translate(texto, src='pt', dest='en').text
         
-        # Analisar sentimento
         sentimento = TextBlob(texto_traduzido).sentiment
         polaridade = sentimento.polarity
 

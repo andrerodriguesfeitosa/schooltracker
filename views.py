@@ -207,9 +207,17 @@ def detalhe_aluno(ra):
     session_db = Session() 
     try:
         aluno = session_db.query(Aluno).filter(Aluno.ra == ra).one_or_none()
-        diariobordo = session_db.query(DiarioBordo).filter(DiarioBordo.fk_Aluno_id == aluno.id).order_by(DiarioBordo.id.desc()).all() if aluno else [] 
         if aluno is None:
             return "Aluno não encontrado", 404
+        
+        diariobordo = session_db.query(DiarioBordo).filter(DiarioBordo.fk_Aluno_id == aluno.id).order_by(DiarioBordo.id.desc()).all()
+        
+        diariobordo_list = [{
+            'datahora': diario.datahora,
+            'texto': diario.texto,
+            'sentimento': diario.sentimento
+        } for diario in diariobordo]
+        
     except Exception as e:
         session_db.rollback()
         print(f"Erro ao buscar o aluno: {e}")
@@ -217,7 +225,7 @@ def detalhe_aluno(ra):
     finally:
         session_db.close()
 
-    return render_template('detalhealuno.html', aluno=aluno, diariobordo=diariobordo, active_page='listar_alunos')
+    return render_template('detalhealuno.html', aluno=aluno, diariobordo=diariobordo_list, active_page='listar_alunos')
 
 @app.route('/logout')
 def logout():
