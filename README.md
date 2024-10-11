@@ -8,11 +8,14 @@ Nosso sistema de diário de bordo permite que os estudantes compartilhem suas hi
 
 Estamos comprometidos em oferecer uma plataforma acessível e eficiente, que valoriza a voz de cada aluno. Junte-se a nós e faça parte dessa jornada de aprendizado e crescimento!
 
+
 ## Funcionalidades
 
-- Registro diário de experiências
-- Compartilhamento de desafios e conquistas
-- Interface intuitiva e amigável
+- **Registro diário de experiências**: Os alunos podem documentar suas vivências e reflexões após cada aula.
+- **Compartilhamento de desafios e conquistas**: Os estudantes têm a oportunidade de compartilhar suas dificuldades e sucessos, promovendo um ambiente de apoio mútuo.
+- **Interface intuitiva e amigável**: A plataforma foi projetada para ser fácil de usar, facilitando a navegação e o registro de informações.
+- **Acompanhamento do progresso**: Os professores podem monitorar o aprendizado dos alunos, obtendo insights sobre o que estão aprendendo e sentindo, além de oferecer feedback rápido e personalizado.
+
 
 ## Tecnologias Utilizadas
 
